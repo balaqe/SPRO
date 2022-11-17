@@ -7,7 +7,7 @@
 #define F_CPU 16000000UL
 #define BAUD 9600
 
-char ReadBuffer[100];
+char ReadBuffer[8];
 int carSpeed = 0;
 int secounds = 0; 
 int counter = 5;
@@ -52,8 +52,9 @@ int CarStartup()
     for(int i = 0; i<8;i++)                 // loop that has to go throw the Serial to check if there is a putton press
     {
         scanf("%c", &ReadBuffer[i]);        // Scanse the Serial port for info
-            
-        if(ReadBuffer[i-1] == 0x65 && ReadBuffer[i] == 0x01)           //  Selected program 1 for the car to run on
+    }
+
+        if(ReadBuffer[0] == 0x65 )           //  Selected program 1 for the car to run on
         {
 
             counter = 5;                    // sets counter to 5 sec
@@ -68,11 +69,11 @@ int CarStartup()
             }
 
             CarRun();                       // Calls the fuction CarRun that Runs the car
-            continue;
+            
 
         }
         
-    }
+    
 
 }
 
@@ -131,22 +132,5 @@ int CarReset()
     secounds = 0;
     Interval = 0;
     counter = 5;
-
-}
-
-int CrashTest()
-{
-
-    for(int i = 0; i<7; i++) 
-    {
-        scanf("%c", &ReadBuffer[i]);
-        if(ReadBuffer[i] == 0x1A)//some error occurred - retrieve the 0xFF commands and start over
-        {
-            scanf("%c", &ReadBuffer[i]);
-            scanf("%c", &ReadBuffer[i]);
-            scanf("%c", &ReadBuffer[i]);
-            continue;
-        }
-    }
 
 }
