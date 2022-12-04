@@ -3,8 +3,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include "usart.h"
-#include "lcd.h"
-#include "i2cmaster.h"
+
 
 #define F_CPU 16000000UL
 #define BAUD 9600
@@ -13,13 +12,10 @@ char ReadBuffer[8];
 char Input_carSpeed;
 char Input_sec; 
 int counter = 5;
-int Interval = 0;
-int time;
-int value;
-char navn;
 
 
 
+///////*************** Main ***************///////
 int main(void) 
 {    
 
@@ -55,20 +51,20 @@ int main(void)
 
 
 
-
+///////*************** config saver ***************///////
 void Car_config(){
     
-    if (ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == 0x03 && ReadBuffer[2] == 0x05 && ReadBuffer[3] == 0x01){
+    if (ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == 0x03 && ReadBuffer[2] == 0x05 && ReadBuffer[3] == 0x01){         // checks if button *save* is pressed
         Button_scaner(8);
 
         Input_sec = ReadBuffer[0];
         Input_carSpeed = ReadBuffer[4];
 
     }
-    if (ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == 0x03 && ReadBuffer[2] == 0x04 && ReadBuffer[3] == 0x00){
+    if (ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == 0x03 && ReadBuffer[2] == 0x04 && ReadBuffer[3] == 0x00){         // checks if button *Back* is pressed
 
-        printf("x0.val=%d%c%c%c",Input_carSpeed,255,255,255);
-        printf("n0.val=%d%c%c%c",Input_sec,255,255,255);
+        printf("x0.val=%d%c%c%c",Input_carSpeed,255,255,255);       // sends *Input_carSpeed* to the info colom
+        printf("n0.val=%d%c%c%c",Input_sec,255,255,255);       // sends *Input_sec* to the info colom
     }    
     
 
@@ -91,8 +87,8 @@ void Car_config(){
 
 
 
-
-void Button_scaner(int a){
+///////*************** Button scaner ***************///////
+void Button_scaner(int a){          
 
 
     for(int i = 0; i<a;i++)                 // loop that has to go throw the Serial to check if there is a putton press
@@ -112,7 +108,7 @@ void Button_scaner(int a){
 
 
 
-
+///////*************** Car startup ***************///////
 void CarStartup()
 {
 
@@ -124,9 +120,9 @@ void CarStartup()
     for (int i = 0; i < 6; i++)     // this does the count down on the screen
     {
         printf("n2.val=%d%c%c%c",counter,255,255,255);    //sends the vaible to the screen so it can show the count down
-        counter--;                  // decreses the counter by 1
-        printf("n0.val=%d%c%c%c",Input_sec,255,255,255);
-        _delay_ms(1000);
+        counter--;                   // decreses the counter by 1
+        printf("n0.val=%d%c%c%c",Input_sec,255,255,255);       // sends the input for sec to the screen 
+        _delay_ms(1000);            // delay of 1 sec
 
     }
 
@@ -144,12 +140,12 @@ void CarStartup()
 
 
 
-
+///////*************** Run comand ***************///////
 void CarRun()
 {
 
     // while (timer < Input_sec){
-    for (int i = 1; Input_sec + 1 > i ; i++)               
+    for (int i = 1; Input_sec + 1 > i ; i++)         // for loop just temporery until we get the motor function working      
     {
 
         printf("z0.val=%d%c%c%c",i*6,255,255,255);        // sends the sec valu to the clock, it has to be *6 because one reveloution is 360
@@ -162,7 +158,7 @@ void CarRun()
         
     }
     
-    printf("page 1%c%c%c",255,255,255);
-    _delay_ms(2000);
+    _delay_ms(2000);        // delay 2 sec
+    printf("page 1%c%c%c",255,255,255);             // after car is done running sends the user to page 1
 
 }
