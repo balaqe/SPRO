@@ -1,5 +1,5 @@
 #define F_CPU 16000000UL
-#define circumferance 20 // circumferance of the wheel in cm
+#define circumference 20 // circumference of the wheel in cm
 #define slits 8 // number of slits on the encoder wheel
 #define omega_max (89*0.001*slits*4) // 89*10^-3*8*4 (time at max speed in seconds * number of slits * gear ratio)
 
@@ -41,7 +41,7 @@ int main(void)
   PORTB |= 0x01;
   TCCR1B = (1 << ICNC1) | (1 << ICES1) | (1 << CS12) | (1 << CS10);
 
-  target_speed = (path_distance/circumferance)/duration; // in 1/sec or rev/sec
+  target_speed = (path_distance/circumference)/duration; // in 1/sec or rev/sec
 
   if(1)
   { // set the driving mode based on user input (just hard code it to 1 for now)
@@ -117,5 +117,5 @@ void time()
 
 void distance()
 {
-  traveled_distance += circumferance/slits;
+  traveled_distance += circumference/slits;
 }
