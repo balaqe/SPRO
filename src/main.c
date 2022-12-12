@@ -73,7 +73,7 @@ int main(void)
       time();
 
       smoothed_time = time_sum/8;
-      measured_speed = 1/smoothed_time*slits; // 1/sec or rev/sec
+      measured_speed = 1/(smoothed_time*slits); // 1/sec or rev/sec
 
       target_speed = (path_distance-traveled_distance)/(duration-elapsed_time/1000); // remainding distance / remainding time (elapsed time is converted to seconds)
 
