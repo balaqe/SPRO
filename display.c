@@ -16,7 +16,11 @@ struct Car_config_t
 
 
 
-///////*************** Global variables ***************///////    
+/***Golbal varible*
+ * 
+ *all the varibles that needed in many functions are made here
+ * 
+*/
     struct  Car_config_t Car_Build[8];
     char    ReadBuffer[8];
     int     counter = 5;
@@ -40,15 +44,11 @@ int main()
 
 
 
-///////*************** initialization ***************///////
+// initialization 
 
     ADMUX   = ADMUX  | 0x40;           // sets A0 as
     ADCSRA  = ADCSRA | 0xE7;
     ADCSRB  = ADCSRB & (0xF8);
-
-
-    DDRD = 0b01000000;          // controls what the pins are going to do :      1 = output  -    0 = input
-    PORTD = 0b00000000;         // this sets the state of the pin if set to output:     1 = high    -   0 = low
     
 
     void    CarRun(void);
@@ -214,7 +214,18 @@ void CarStartup(void)
 
 
 
-///////*************** Run comand ***************///////
+/***Run comand*
+ * 
+ * this function is the main running fuction!
+ * when its called it will do a count down then start
+ * first it will get the number of times it shall run from
+ * the config function and polt that in the forloop and in that
+ * forloop the engin is, that's where everything will happen, 
+ * there the motor speed and everything will happen!
+ * 
+ * when finnished it will send the user to the main page again
+ * 
+*/
 void CarRun(void)
 {
     void battery_info_sender(void);
@@ -228,7 +239,7 @@ void CarRun(void)
         {
 
 
-                
+
 
 
 
@@ -276,7 +287,12 @@ void CarRun(void)
 
 
 
-/*** Battery Voltage input from analog **/
+/*** Battery Voltage input from analog *
+ * 
+ * 
+ * 
+ * 
+*/
 float Battery_volt(void){
 
     float adclow = ADCL;
@@ -286,7 +302,11 @@ float Battery_volt(void){
 
 
 
-/*** sends battery procentage to the nextion display **/
+/*** sends battery procentage to the nextion display *
+ * 
+ * 
+ * 
+*/
 void battery_info_sender(void){
 
     float battery_Prosent = ((Battery_volt()-6)/2.333333)*100;      // calculate for the procentage
@@ -297,7 +317,12 @@ void battery_info_sender(void){
 
 
 
-/**** this is only used for if functions, it only return a 1 or 0 statement ***/
+/* * *this is only used for if functions, it only return a 1 or 0 statement*
+ * 
+ * 
+ * 
+ * 
+ * */
 int Button_ID(int page, int ID, int event){
 
     if(ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == page && ReadBuffer[2] == ID && ReadBuffer[3] == event){          // identifies what button is pressed
@@ -309,10 +334,13 @@ int Button_ID(int page, int ID, int event){
 
 
 ///////*************** Button scaner ***************///////
-void Button_scaner(int a)
+// type in what amount of characters you want to be scanded
+// Demo if you want 3 char scaned then type  Button_scaner(3)
+// then you will get at array of char in readBuffer
+void Button_scaner(int amount)
 {
 
-    for(int i = 0; i<a;i++)                 // loop that has to go throw the Serial to check if there is a putton press
+    for(int i = 0; i<amount;i++)                 // loop that has to go throw the Serial to check if there is a putton press
     {
         scanf("%c", &ReadBuffer[i]);        // Scanse the Serial port for info
     }
