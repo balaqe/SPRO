@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <stdio.h>
 #include <avr/io.h>
 #include <util/delay.h>
@@ -17,7 +16,7 @@ struct Car_config_t
 
 
 
-///////*************** Globaæ variables ***************///////    
+///////*************** Global variables ***************///////    
     struct  Car_config_t Car_Build[8];
     char    ReadBuffer[8];
     int     counter = 5;
@@ -59,6 +58,7 @@ int main()
     void    battery_info_sender(void);
     float   Battery_volt(void);
     int     time(void);
+    int     Button_ID(int page, int ID, int event);
 
     
     uart_init();                    // open the communication to the microcontroller
@@ -88,8 +88,8 @@ int main()
 
 
         battery_info_sender();          // sends the battery info to the screen
-        Battery_volt();                 // checks the status with the battery
         Button_scaner(7);               // scans for information from the screen
+        Battery_volt();                 // checks the status with the battery
         Car_config();                   // configurates the car
         CarStartup();                   //Calls a fuction carstartup
 
@@ -105,55 +105,34 @@ int main()
 
 
 
-float Battery_volt(void){
-
-    float adclow = ADCL;
-    return (((adclow + ( (ADCH & 0x03) << 8 ))*5/1023)*5/3);
-}
-
-
-
-int time(void) {
-
-  unsigned int time;
-
-  TIFR1 = (1 << ICF1);                  // resets the timer interupt flag register so it no longer is on rising edge
-  TCNT1 = 0;                            // resets the timer
-  time = ICR1;                          // copies the interupt capture register into a local variable
-  
-  printf("\n time is: %d", time);       // prints out the time (needs to be changed to lcd)
-
-  return time;
-}
-
-
-
-
-void battery_info_sender(void){
-
-    float battery_Prosent = ((Battery_volt()-6)/2.333333)*100;      // calculate for the procentage
-    printf("j0.val=%.0f%c%c%c",battery_Prosent,255,255,255);        // sends the procenst to the screen
-    printf("n2.val=%.0f%c%c%c",battery_Prosent,255,255,255);        // sends the procenst to the screen
-
-}
-
-
 
 
 
 
 ///////*************** config saver ***************///////
-void Car_config(){
+void Car_config(void){
     
-    void Button_scaner(int a);
 
-    if(ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == 0x04 && ReadBuffer[2] == 0x06 && ReadBuffer[3] == 0x01){          // sets the number of intervals there are
+
+
+    void Button_scaner(int a);
+    int Button_ID(int page, int ID, int event);
+
+
+
+
+    if(Button_ID(0x04, 0x06, 0x01)){          // sets the number of intervals there are
         Button_scaner(4);
         interval = (int)ReadBuffer[0];
         
     }
 
-    if (ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == 0x03 && ReadBuffer[2] == 0x04 && ReadBuffer[3] == 0x01){         // checks if button *save* is pressed
+
+
+
+
+    if (Button_ID(0x03, 0x04, 0x01)){         // checks if button *save* is pressed
+        
         Button_scaner(8);
 
 
@@ -189,28 +168,26 @@ void Car_config(){
 
 
 
-///////*************** Button scaner ***************///////
-void Button_scaner(int a){
-
-    for(int i = 0; i<a;i++)                 // loop that has to go throw the Serial to check if there is a putton press
-    {
-        scanf("%c", &ReadBuffer[i]);        // Scanse the Serial port for info
-    }
-
-
-}
 
 
 
 
 ///////*************** Car startup ***************///////
-void CarStartup()
+void CarStartup(void)
 {
 
-    void CarRun(void);
+    void    CarRun(void);
+    void    battery_info_sender(void);
+    float   Battery_volt(void);
+    int     Button_ID(int page, int ID, int event);
+
+    
+    
     battery_info_sender();
 
-    if(ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == 0x01 && ReadBuffer[2] == 0x02 && ReadBuffer[3] == 0x00)           //  Selected program 1 for the car to run on
+
+
+    if(Button_ID(0x01, 0x02, 0x00))           //  Selected program 1 for the car to run on
     {
 
     counter = 5;                    // sets counter to 5 sec
@@ -223,7 +200,7 @@ void CarStartup()
         printf("x0.val=%d%c%c%c",avg ,255,255,255);             // sends the input for sec to the screen 
         printf("n0.val=%d%c%c%c",total_time ,255,255,255);      // sends the input for sec to the screen 
         if(Battery_volt() < 6.8){
-            return 0;
+            return;
         }
         _delay_ms(1000);                                        // delay of 1 sec
 
@@ -238,16 +215,29 @@ void CarStartup()
 
 
 ///////*************** Run comand ***************///////
-void CarRun()
+void CarRun(void)
 {
+    void battery_info_sender(void);
 
     battery_info_sender();
 
-    // while (timer < Input_sec){
+
     for (int i = 0; i < interval  ; i++)
     {
         for (int h = 1; h < Car_Build[i].Input_sec + 1 ; h++)         // for loop just temporery until we get the motor function working      
         {
+
+
+                
+
+
+
+
+
+
+
+
+
 
             /**** data for the display regarding the time ****/
             printf("z0.val=%d%c%c%c",h*6,255,255,255);        // sends the sec valu to the clock, it has to be *6 because one reveloution is 360
@@ -269,4 +259,63 @@ void CarRun()
     _delay_ms(2000);        // delay 2 sec
     printf("page 1%c%c%c",255,255,255);             // after car is done running sends the user to page 1
 
-} 
+}
+
+
+/*
+*
+* smaller functions
+*
+* when going futhere down you'll see
+*
+* all the smaller functions!
+*
+* the once to shorten the code so its easy to look at
+*
+*/
+
+
+
+/*** Battery Voltage input from analog **/
+float Battery_volt(void){
+
+    float adclow = ADCL;
+    return (((adclow + ( (ADCH & 0x03) << 8 ))*5/1023)*5/3);
+}
+
+
+
+
+/*** sends battery procentage to the nextion display **/
+void battery_info_sender(void){
+
+    float battery_Prosent = ((Battery_volt()-6)/2.333333)*100;      // calculate for the procentage
+    printf("j0.val=%.0f%c%c%c",battery_Prosent,255,255,255);        // sends the procenst to the screen
+    printf("n2.val=%.0f%c%c%c",battery_Prosent,255,255,255);        // sends the procenst to the screen
+
+}
+
+
+
+/**** this is only used for if functions, it only return a 1 or 0 statement ***/
+int Button_ID(int page, int ID, int event){
+
+    if(ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == page && ReadBuffer[2] == ID && ReadBuffer[3] == event){          // identifies what button is pressed
+        return 1;
+    }
+    return 0;
+}
+
+
+
+///////*************** Button scaner ***************///////
+void Button_scaner(int a)
+{
+
+    for(int i = 0; i<a;i++)                 // loop that has to go throw the Serial to check if there is a putton press
+    {
+        scanf("%c", &ReadBuffer[i]);        // Scanse the Serial port for info
+    }
+
+
+}
