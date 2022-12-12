@@ -108,8 +108,13 @@ int main()
 
 
 
-
-///////*************** config saver ***************///////
+/* 
+    * *Car Configuration*
+    * 
+    * this has comunication with the display and takes the needed
+    * infomation for the display when the user has commited it
+    *  
+*/
 void Car_config(void){
     
 
@@ -172,7 +177,16 @@ void Car_config(void){
 
 
 
-///////*************** Car startup ***************///////
+/* 
+    * *Car start up*
+    * 
+    * this function makes the car ready for driving
+    * first it checks if everthing is allright with the battery
+    * and and everthing is up and running at it should!
+    * Then it start a count down when the count down is finnished
+    * it calls the Car run function that runs the car!
+    * 
+*/
 void CarStartup(void)
 {
 
@@ -214,17 +228,18 @@ void CarStartup(void)
 
 
 
-/***Run comand*
- * 
- * this function is the main running fuction!
- * when its called it will do a count down then start
- * first it will get the number of times it shall run from
- * the config function and polt that in the forloop and in that
- * forloop the engin is, that's where everything will happen, 
- * there the motor speed and everything will happen!
- * 
- * when finnished it will send the user to the main page again
- * 
+/*
+    * *Run comand*
+    * 
+    * this function is the main running fuction!
+    * when its called it will do a count down then start
+    * first it will get the number of times it shall run from
+    * the config function and polt that in the forloop and in that
+    * forloop the engin is, that's where everything will happen, 
+    * there the motor speed and everything will happen!
+    * 
+    * when finnished it will send the user to the main page again
+    * 
 */
 void CarRun(void)
 {
@@ -274,15 +289,15 @@ void CarRun(void)
 
 
 /*
-*
-* smaller functions
-*
-* when going futhere down you'll see
-*
-* all the smaller functions!
-*
-* the once to shorten the code so its easy to look at
-*
+    *
+    * smaller functions
+    *
+    * when going futhere down you'll see
+    *
+    * all the smaller functions!
+    *
+    * the once to shorten the code so its easy to look at
+    *
 */
 
 
@@ -317,12 +332,10 @@ void battery_info_sender(void){
 
 
 
-/* * *this is only used for if functions, it only return a 1 or 0 statement*
- * 
- * 
- * 
- * 
- * */
+/* 
+    * *this is only used for if functions, it only return a 1 or 0 statement* 
+    *
+*/
 int Button_ID(int page, int ID, int event){
 
     if(ReadBuffer[0] == 0x65 &&  ReadBuffer[1] == page && ReadBuffer[2] == ID && ReadBuffer[3] == event){          // identifies what button is pressed
@@ -332,11 +345,13 @@ int Button_ID(int page, int ID, int event){
 }
 
 
-
-///////*************** Button scaner ***************///////
-// type in what amount of characters you want to be scanded
-// Demo if you want 3 char scaned then type  Button_scaner(3)
-// then you will get at array of char in readBuffer
+/*
+    * *************** Button scaner ***************
+    *
+    * type in what amount of characters you want to be scanded
+    * Demo if you want 3 char scaned then type  Button_scaner(3)
+    * then you will get at array of char in readBuffer
+*/
 void Button_scaner(int amount)
 {
 
