@@ -1,7 +1,9 @@
 #define F_CPU 16000000UL
-#define circumference 20 // circumference of the wheel in cm
-#define slits 8 // number of slits on the encoder wheel
-#define omega_max (89*0.001*slits*4) // 89*10^-3*8*4 (time at max speed in seconds * number of slits * gear ratio)
+#define circumference 20 // cm
+#define slices 8 // number of slices (holes and solid parts) on the encoder wheel
+#define min_opto_time 356 // 89*4 (from measurements, using the 4/1 gear ratio)
+#define PWM_scaling_factor 255/(circumference/(min_opto_time*0.000064*slices)) // calculate scaling factor for converting speed (cm/s) to a PWM value
+#define snappiness 3 // factor setting how aggressively/smoofly the speed is updated
 
 #include <stdio.h>
 #include <avr/io.h>
@@ -9,31 +11,27 @@
 
 #include "usart.h"
 
-int time_smoother[8];
-int distributor = 0; // used for specifying the time smoother array elements
-int time_sum = 0; //sum of intervals used to calculate a floating average time
-int mode = 0; //driving mode. (0: stop, 1: go)
+unsigned int opto();
+
 int path_distance = 100; // cm
-int traveled_distance = 0; // cm
-long elapsed_time = 0; // ms
+int duration = 25; // sec
 
-float smoothed_time; // floating average arcoss 8 measurements of opco times
-float duration = 20; // sec
-float target_speed; // rotational speed in 1/sec or rev/sec
-float measured_speed; // 1/sec or rev/sec
+long loops = 0;
 
-void distance(); // function for updating the traveled distance
-void time(); // function for getting the optocoupler reading
+float current_distance = 0; // cm
+float elapsed_time = 0; // sec
+float target_speed; // cm/sec (not necessary but makes the code easier to understand)
+float measured_speed; // cm/sec
+float prev_speed; // previous PWM (OCR0A) value for smoothing
+float average_speed;
+float speed_sum = 0;
 
-
-
-int main(void)
-{
+int main(void){
 
   uart_init();   // open the communication to the microcontroller
   io_redirect(); // redirect input and output to the communication
+
   DDRD |= 0x60;
-  OCR0A = 255; // pulse width - change this to controle speed
   TCCR0A |= 0xA3;
   TCCR0B |= 0x05;
   TCCR1A = 0x00;
@@ -41,81 +39,69 @@ int main(void)
   PORTB |= 0x01;
   TCCR1B = (1 << ICNC1) | (1 << ICES1) | (1 << CS12) | (1 << CS10);
 
-  target_speed = (path_distance/circumference)/duration; // in 1/sec or rev/sec
+  OCR0A = 255; // set speed to max to start with        OCR0A is the PWM variable (value 0-255)
+  target_speed = ((float)path_distance)/duration;
+  
+  for(int i=0; i<slices; i++){ // take readings while spinning the motor
+    measured_speed = ((float)slices/circumference)/(opto()*0.000064); // get measurements on the car's speed
+    // intuitively it should be circumference / slices but it doesn't work that way... but it works inverted
 
-  if(1)
-  { // set the driving mode based on user input (just hard code it to 1 for now)
-    mode = 1;
+    speed_sum += measured_speed;
+    loops++;
   }
+  prev_speed = measured_speed;
 
-  while(mode == 1)
-  {
-    for(int i = 0; i < 8; i++)
-    {
-      time();
-      if(target_speed < omega_max)
-      {
-        OCR0A = target_speed*88.54; // scaling factor to map 2.88 to 255 and everything inbetween
-      }
-      else
-      {
-        OCR0A = 255;
-      }
+// go into the main while loop 
 
-      distance();
-      
+  while(current_distance <= path_distance){
+    // opto();
+
+    measured_speed = 0.05*((float)slices/circumference)/(opto()*0.000064) + 0.95*prev_speed; // update measured speed and smooth the change
+    speed_sum += measured_speed;
+    average_speed = speed_sum/loops; // calculate average speed
+
+    current_distance = average_speed*elapsed_time;
+
+    printf("\nMeasured speed: %.2f", measured_speed);
+
+    // if(loops > slices){
+    target_speed = (path_distance-current_distance)/(duration-elapsed_time); // calculate target speed based on remainding distance and time
+    if(OCR0A + (target_speed-measured_speed)*snappiness < 255 && OCR0A + (target_speed-measured_speed)*snappiness > 0){
+      OCR0A += (target_speed-measured_speed)*snappiness;
     }
     
-    smoothed_time = time_sum/8;
+      // OCR0A = 0.95*prev_speed + 0.05*target_speed*PWM_scaling_factor;
+    // }
+    printf("     Target speed: %.2f", target_speed);
+    printf("     OCR0A: %d", OCR0A);
 
-    while (1)
-    {
-      time();
+    prev_speed = target_speed;
 
-      smoothed_time = time_sum/8;
-      measured_speed = 1/(smoothed_time*slits); // 1/sec or rev/sec
-
-      target_speed = (path_distance-traveled_distance)/(duration-elapsed_time/1000); // remainding distance / remainding time (elapsed time is converted to seconds)
-
-      if(target_speed < omega_max && target_speed > 0)
-      {
-        OCR0A += (target_speed-measured_speed)*10; // add the difference in target and measured speed to the PWM value scaled by 10 (since we're expecting a difference with an order of 10^-2)
-      }
-      else if(target_speed > omega_max)
-      {
-        OCR0A = 255;
-      }
-      else
-      {
-        OCR0A = 0;
-      }
-
-      distance();
-
-    }
+    loops++;
   }
-  
+  OCR0A = 0;
+  printf("Done");
   return 0;
 }
+unsigned int opto(){
+  unsigned int opto_time; // 64 us
 
-void time()
-{
-  unsigned int time;
-  TIFR1 = (1 << ICF1);  // resets the timer interupt flag register so it no longer is on rising edge
-  TCNT1 = 0;            // resets the timer
-  time = ICR1;          // copies the interupt capture register into a local variable
-  time_smoother[distributor] = time;
-  time_sum += time_smoother[distributor]; // add time interval to time_sum for later use in the floating average
-  elapsed_time += time; // update value of elapsed time since the first interrupt
-  printf("\n%d", time); // prints out the time (needs to be changed to lcd)
+  if (TIFR1 & (1 << ICF1)){
+    TIFR1 = (1 << ICF1);  // resets the timer interupt flag register so it no longer is on rising edge
+    TCNT1 = 0;            // resets the timer
 
-  distributor++;
-  if(distributor > 7){
-    distributor = 0;
+    opto_time = ICR1;     // copies the interupt capture register into a local variable
+    elapsed_time += opto_time*0.000064;
+    // printf("     Opto time: %d", opto_time); // prints out the time (needs to be changed to lcd)
+
+    // current_distance += ((float)circumference)/slices; // update current distance by adding circumference / number of slices
+
+    printf("      Elapsed time: %.2f", elapsed_time);
+    
+    printf("      Current distance: %.2f", current_distance);
+
+
+    return opto_time;
   }
-}
-
-void distance()
-{
-  traveled_distance += circumference/slits;
+  
 }
