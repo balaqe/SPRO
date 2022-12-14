@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <stdio.h>
 #include <avr/io.h>
 #include <util/delay.h>
@@ -10,7 +11,7 @@ struct Car_config_t
 {
 
     char Input_carSpeed;
-    char Input_sec;
+    int Input_sec;
 
 };
 
@@ -24,9 +25,14 @@ struct Car_config_t
     struct  Car_config_t Car_Build[8];
     char    ReadBuffer[8];
     int     counter = 5;
+    int     car_running = 0;
+    int     curent_inteval = 0;
     int     total_time;
+    int     timer = 0;
+    int     sender = 0;
     int     interval;
     int     j =  0;
+    int     i = 0;
     int     avg;
 
 
@@ -49,7 +55,15 @@ int main()
     ADMUX   = ADMUX  | 0x40;           // sets A0 as
     ADCSRA  = ADCSRA | 0xE7;
     ADCSRB  = ADCSRB & (0xF8);
+
     
+    TCCR1A  = 0;
+    TCCR1B  = 0;
+    TCCR1B |= (1<<CS12);        // sets prescaler 256
+    TIMSK1 |= (1<<TOIE1);       // Enable timer overflow
+    TCNT1   = 3036;             // sets the timer to exicute every sec : formula  16.000.000(Hz CPU) / (256(prescaler) * 1 (sec)) - 65535(16 bit) = 3036
+
+
 
     void    CarRun(void);
     void    Car_config(void);
@@ -60,7 +74,6 @@ int main()
     int     time(void);
     int     Button_ID(int page, int ID, int event);
 
-    
     uart_init();                    // open the communication to the microcontroller
 	io_redirect();                  // redirect input and output to the communication
     
@@ -70,8 +83,7 @@ int main()
 
 ///////*************** Presetup ***************///////
     printf("page 0%c%c%c",255,255,255);         // every time when resets it send the use to main page
-    _delay_ms(1000);                            // secure so analog has time to get its value
-    
+    _delay_ms(1000);                               // secure so analog has time to get its value
 
 
 
@@ -79,11 +91,6 @@ int main()
 ///////*************** Main Loop ***************///////
     while(Battery_volt() > 6) 
     {
-        
-
-
-
-
 
 
 
@@ -100,7 +107,6 @@ int main()
 
     return 0;
 }
-
 
 
 
@@ -206,7 +212,7 @@ void CarStartup(void)
 
     counter = 5;                    // sets counter to 5 sec
 
-    for (int i = 0; i < 6; i++)     // this does the count down on the screen
+    for ( i = 0; i < 6; i++)     // this does the count down on the screen
     {
         
         printf("n3.val=%d%c%c%c",counter,255,255,255);          // sends the vaible to the screen so it can show the count down
@@ -219,7 +225,6 @@ void CarStartup(void)
         _delay_ms(1000);                                        // delay of 1 sec
 
     }
-
     CarRun();                       // Calls the fuction CarRun that Runs the car        
    
     }
@@ -245,43 +250,49 @@ void CarRun(void)
 {
     void battery_info_sender(void);
 
-    battery_info_sender();
+        battery_info_sender();
+        TIFR1 = 0x01;                     // restarts the flagpoint for the timer to start
 
 
     for (int i = 0; i < interval  ; i++)
     {
-        for (int h = 1; h < Car_Build[i].Input_sec + 1 ; h++)         // for loop just temporery until we get the motor function working      
+
+        while(timer < Car_Build[i].Input_sec)         // for loop just temporery until we get the motor function working      
         {
+            
 
 
+            if (TIFR1&0x01)         // checks if there is a flag been
+            {
+                TIFR1 = 0x01;       // resets the flag
+                timer++;            // increases the timer by 1
+                
+                /**** data for the display regarding the time ****/
+                printf("z0.val=%d%c%c%c",timer*6,255,255,255);        // sends the sec valu to the clock, it has to be *6 because one reveloution is 360
+                printf("n0.val=%d%c%c%c",timer,255,255,255);          // sends the sec valu to the interger n0 on the display
 
 
-
-
-
-
-
-
-
-
-
-            /**** data for the display regarding the time ****/
-            printf("z0.val=%d%c%c%c",h*6,255,255,255);        // sends the sec valu to the clock, it has to be *6 because one reveloution is 360
-            printf("n0.val=%d%c%c%c",h,255,255,255);          // sends the sec valu to the interger n0 on the display
-
-
-            /**** data for the display regarding the speed ****/
-            printf("x0.val=%d%c%c%c",Car_Build[i].Input_carSpeed,255,255,255);   // sends the Carspeed to the dispay interger x0
-            printf("z1.val=%d%c%c%c",Car_Build[i].Input_carSpeed,255,255,255);   // sends the Carspeed to the dispay interger z1
+                /**** data for the display regarding the speed ****/
+                printf("x0.val=%d%c%c%c",Car_Build[i].Input_carSpeed,255,255,255);   // sends the Carspeed to the dispay interger x0
+                printf("z1.val=%d%c%c%c",Car_Build[i].Input_carSpeed,255,255,255);   // sends the Carspeed to the dispay interger z1
+                
+                
+            }
         
         
-            _delay_ms(1000);                // delay of 1 sec
         
         }
+
+        timer = 0;
+
     }
 
+
+    car_running = 0;
     total_time = 0;
+    curent_inteval = 0;
     avg = 0;
+
     _delay_ms(2000);        // delay 2 sec
     printf("page 1%c%c%c",255,255,255);             // after car is done running sends the user to page 1
 
@@ -302,12 +313,9 @@ void CarRun(void)
 
 
 
-/*** Battery Voltage input from analog *
- * 
- * 
- * 
- * 
-*/
+/* 
+ *    * Battery Voltage input from analog *    
+ */
 float Battery_volt(void){
 
     float adclow = ADCL;
@@ -317,11 +325,9 @@ float Battery_volt(void){
 
 
 
-/*** sends battery procentage to the nextion display *
- * 
- * 
- * 
-*/
+/*
+ * * sends battery procentage to the nextion display *
+ */
 void battery_info_sender(void){
 
     float battery_Prosent = ((Battery_volt()-6)/2.333333)*100;      // calculate for the procentage
