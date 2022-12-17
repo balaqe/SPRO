@@ -1,101 +1,60 @@
-#define F_CPU 16000000UL
-#define BAUD 9600UL
-#define CIRCUMFERENCE 20 // cm
-#define SLICES 8 // number of slices (holes and solid parts) on the encoder wheel
-#define SNAPPINESS 6 // factor setting how aggressively/smoofly the speed is updated
-#define SMOOTHING 0.15
-#define DELTA_PWM ((target_speed-measured_speed)*SNAPPINESS)
-
-#include <stdio.h>
 #include <avr/io.h>
-#include <util/delay.h>
-#include <stdbool.h>
-#include <math.h>
-
+#include <stdio.h>
 #include "usart.h"
 
-float opto();
+#ifndef F_CPU
+#define F_CPU 16000000UL
+#endif
 
-int duration = 55; // sec
-int path_distance = 300; // cm
-float total_revolutions = 0;
+#ifndef BAUD
+#define BAUD 9600
+#endif
+#include <util/setbaud.h>
 
-bool interrupt = false;
 
-long loops = 0;
+FILE f_uart = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 
-float measured_speed;
-float target_speed;
-float elapsed_time = 0;
-float current_distance = 0;
-float init_rev_sec;
-float revolution_sec;
-float prev_sec;
 
-int main(){
-    uart_init();   // open the communication to the microcontroller
-    io_redirect(); // redirect input and output to the communication
+void uart_init(void) {
+	
+	UBRR0H = UBRRH_VALUE;
+	UBRR0L = UBRRL_VALUE;
+	
+	#if USE_2X
+	UCSR0A |= _BV(U2X0);
+	#else
+	UCSR0A &= ~(_BV(U2X0));
+	#endif
 
-    DDRD |= 0x60;
-    TCCR0A |= 0xA3;
-    TCCR0B |= 0x05;
-    TCCR1A = 0x00;
-    DDRB &= ~0x01;
-    PORTB |= 0x01;
-    TCCR1B = (1 << ICNC1) | (1 << ICES1) | (1 << CS12) | (1 << CS10);
-
-    OCR0A = 150;
-
-    prev_sec = opto();
-
-    interrupt = false;
-
-    while(current_distance < path_distance){
-        // init_rev_sec = (1-SMOOTHING)*opto() + SMOOTHING*prev_sec; // moving average smoothing
-        // revolution_sec = init_rev_sec/(1-pow(SMOOTHING, (loops+1))); // new readings weigh more
-        revolution_sec = (1-SMOOTHING)*opto() + SMOOTHING*prev_sec;
-        printf("\n sec per rev: %.2f", revolution_sec);
-        
-        // if(revolution_sec != prev_sec){
-            measured_speed = CIRCUMFERENCE/revolution_sec;
-        
-            current_distance += ((float)CIRCUMFERENCE)/((float)SLICES);
-
-            target_speed = (path_distance-current_distance)/(duration-elapsed_time);
-        // }
-
-        printf("     Measured speed: %.2f", measured_speed);
-        printf("     Target speed: %.2f", target_speed);
-        printf("     Current distance: %.2f", current_distance);
-        printf("     Elapsed time: %.2f", elapsed_time);
-        printf("     OCR0A: %d", OCR0A);
-
-        if((OCR0A + DELTA_PWM < 255) && (OCR0A + DELTA_PWM > 0)){
-            OCR0A += DELTA_PWM;
-            printf("     adjusted");
-        }
-       
-        prev_sec = revolution_sec;
-        interrupt = false;
-        loops++;
-
-    }
-    OCR0A = 0;
-    printf("\nDöne");
-
+	UCSR0C = _BV(UCSZ01) | _BV(UCSZ00); /* 8-bit data */
+	UCSR0B = _BV(RXEN0) | _BV(TXEN0);   /* Enable RX and TX */
+	
 }
 
-float opto(){
-    unsigned int opto_time;
-    float opto_sec;
-    while(!(TIFR1 & (1 << ICF1))){
-  
-    }
-    interrupt = true;
-    TCNT1 = 0;
-    TIFR1 = 0b00100000;
-    opto_time = ICR1;
-    elapsed_time += opto_time*0.000064;
-    opto_sec = ((float)opto_time)*0.000064*SLICES; // convert time into seconds
-    return opto_sec;
+void io_redirect(void ){
+		
+		
+		stdout = &f_uart;	//redirect standard output to uart
+		stdin  = &f_uart;  //redirect standard input to uart
+}
+	
+
+int uart_putchar(char c, FILE *stream) {
+	if (c == '\n') {
+		uart_putchar('\r', stream);
+	}
+	loop_until_bit_is_set(UCSR0A, UDRE0);
+	UDR0 = c;
+	return 0;
+}
+
+int uart_getchar(FILE *stream) {
+	loop_until_bit_is_set(UCSR0A, RXC0);
+	if (UCSR0A & _BV(FE0))
+		return _FDEV_EOF;
+	if (UCSR0A & _BV(DOR0))
+		return _FDEV_ERR;
+	// now USART has data available in buffer
+	
+	return UDR0;
 }
