@@ -1,6 +1,6 @@
 #define CIRCUMFERENCE 20 // cm
 #define SLICES 8 // number of slices (holes and solid parts) on the encoder wheel
-#define SNAPPINESS 6 // factor setting how aggressively/smoofly the speed is updated
+#define SNAPPINESS 3 // factor setting how aggressively/smoofly the speed is updated
 #define SMOOTHING 0.15
 #define DELTA_PWM ((target_speed-measured_speed)*SNAPPINESS)
 
@@ -32,7 +32,7 @@ struct Car_config_t
     struct  Car_config_t Car_Build[8];
     char    ReadBuffer[8];
     float   timer = 0;
-    float   elapsed_time   = 0;
+    float   elapsed_time = 0;
     int     curent_inteval = 0;
     int     car_running = 0;
     int     counter = 5;
@@ -160,8 +160,8 @@ void Car_config(void){
 
 
         Car_Build[j].Input_sec = ReadBuffer[0];                      // takes the secounds and sets the valu in an array
-        Car_Build[j].Input_distance = ReadBuffer[4] * 10;            // takes the distance and sets the valu in an array
-        
+        Car_Build[j].Input_distance = ReadBuffer[4];            // takes the distance and sets the valu in an array
+        Car_Build[j].Input_distance = Car_Build[j].Input_distance * 10;
         
         if(j+1==interval)       // checks if all inpunt has been set
         {
@@ -210,14 +210,8 @@ void CarStartup(void)
 {
 
     void    CarRun(void);
-    void    battery_info_sender(void);
     float   Battery_volt(void);
     int     Button_ID(int page, int ID, int event);
-
-    
-    
-    battery_info_sender();
-
 
 
     if(Button_ID(0x01, 0x02, 0x00))           //  Selected program 1 for the car to run on
@@ -225,15 +219,17 @@ void CarStartup(void)
 
     counter = 5;                    // sets counter to 5 sec
 
+        printf("n0.val=%d%c%c%c",total_time ,255,255,255);      // sends the input for sec to the screen 
+    
     for ( i = 0; i < 6; i++)     // this does the count down on the screen
     {
         
         printf("n3.val=%d%c%c%c",counter,255,255,255);          // sends the vaible to the screen so it can show the count down
         counter--;                                              // decreses the counter by 1
-        printf("x0.val=%d%c%c%c",total_distance ,255,255,255);  // sends the input for sec to the screen 
-        printf("n0.val=%d%c%c%c",total_time ,255,255,255);      // sends the input for sec to the screen 
         if(Battery_volt() < 6.8){
+            OCR0A = 0;
             return;
+
         }
         _delay_ms(1000);                                        // delay of 1 sec
 
@@ -261,48 +257,39 @@ void CarStartup(void)
 */
 void CarRun(void)
 {
-    void battery_info_sender(void);
-    void Motor_thing(int duration /* sec */ , int path_distance/* cm/s */);
-    
-    battery_info_sender();
-
+    void Motor_thing(int duration /* sec */ , int path_distance/* cm */);
 
     for (int i = 0; i < interval  ; i++)
     {
         
-        printf("n6.val=%d%c%c%c",Car_Build[i].Input_distance*0.25,255,255,255);
-        printf("n4.val=%d%c%c%c",Car_Build[i].Input_distance*0.5,255,255,255);    
-        printf("n8.val=%d%c%c%c",Car_Build[i].Input_distance*0.75,255,255,255);
-        printf("n6.val=%d%c%c%c",Car_Build[i].Input_distance,255,255,255);
+        
+        printf("n7.val=%d%c%c%c",Car_Build[i].Input_distance,255,255,255);
+        printf("z0.val=%.0f%c%c%c",elapsed_time*6,255,255,255);        // sends the sec valu to the clock, it has to be *6 because one reveloution is 360
+        printf("n0.val=%.0f%c%c%c",elapsed_time,255,255,255);          // sends the sec valu to the interger n0 on the display
 
         // takes the inserted value for the display at sends them to the motor funtion
         Motor_thing( Car_Build[i].Input_sec, Car_Build[i].Input_distance);
 
         _delay_ms(2000);
 
+
     }
 
-
-    car_running = 0;
-    total_time = 0;
-    curent_inteval = 0;
-    total_distance = 0;
-
-    _delay_ms(2000);                                // delay 2 sec
     printf("page 1%c%c%c",255,255,255);             // after car is done running sends the user to page 1
 
 }
 
 void Motor_thing(int duration /* sec */ , int path_distance/* cm/s */)
 {
+    void battery_info_sender(void);
+    float opto(void);
+    float Battery_volt(void);
 
-  void battery_info_sender(void);
-  float opto(void);
 
+    float current_distance = 0;
     float measured_speed;
-    float target_speed;
-    float current_distance  = 0;
     float revolution_sec;
+    float target_speed;
     float prev_sec;
 
 
@@ -324,19 +311,32 @@ void Motor_thing(int duration /* sec */ , int path_distance/* cm/s */)
         
 
         /********* comunication to the Nextion display for information *********/
+        if ((int)elapsed_time%1 == 0){
 
             /**** data for the display regarding the time ****/
-            printf("z0.val=%d%c%c%c",elapsed_time*6,255,255,255);        // sends the sec valu to the clock, it has to be *6 because one reveloution is 360
-            printf("n0.val=%d%c%c%c",elapsed_time,255,255,255);          // sends the sec valu to the interger n0 on the display
+            printf("z0.val=%.0f%c%c%c",elapsed_time*6,255,255,255);        // sends the sec valu to the clock, it has to be *6 because one reveloution is 360
+            printf("n0.val=%.0f%c%c%c",elapsed_time,255,255,255);          // sends the sec valu to the interger n0 on the display
 
 
             /**** data for the display regarding the speed ****/
-            printf("x0.val=%d%c%c%c",measured_speed,255,255,255);   // sends the Carspeed to the dispay interger x0
-            printf("z1.val=%d%c%c%c",measured_speed,255,255,255);   // sends the Carspeed to the dispay interger z1
+            if (measured_speed > 4){
+            printf("x0.val=%.0f%c%c%c",measured_speed,255,255,255);   // sends the Carspeed to the dispay interger x0
+            printf("z1.val=%.0f%c%c%c",measured_speed*10,255,255,255);   // sends the Carspeed to the dispay interger z1
+            }
 
-            /**** data for the display regarding the speed ****/
-            printf("j1.val=%d%c%c%c",current_distance,255,255,255);   // sends the Carspeed to the dispay interger x0
+
+            /**** data for the display regarding the distance ****/
+            if((current_distance/path_distance)*100 < 101)
+            {printf("j1.val=%.0f%c%c%c",(current_distance/path_distance)*100,255,255,255);}   // sends the Carspeed to the dispay interger x0
+            printf("n1.val=%.0f%c%c%c",current_distance,255,255,255);   // sends the current distance to the dispay interger z1
+            
             battery_info_sender();
+            
+            if(Battery_volt() < 6){
+                OCR0A = 0;
+                break;
+            }
+        }
 
         /************ finished comunication ************/
         
@@ -352,11 +352,12 @@ void Motor_thing(int duration /* sec */ , int path_distance/* cm/s */)
 
     }
 
-    elapsed_time = 0;
     OCR0A = 0;
-
+    elapsed_time = 0;
+    
 }
-float opto(void){
+
+float opto(){
     unsigned int opto_time;
     float opto_sec;
     while(!(TIFR1 & (1 << ICF1))){
@@ -369,7 +370,6 @@ float opto(void){
     opto_sec = ((float)opto_time)*0.000064*SLICES; // convert time into seconds
     return opto_sec;
 }
-
 
 
 /*
