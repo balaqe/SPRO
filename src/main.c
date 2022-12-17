@@ -2,8 +2,8 @@
 #define BAUD 9600UL
 #define CIRCUMFERENCE 20 // cm
 #define SLICES 8 // number of slices (holes and solid parts) on the encoder wheel
-#define SNAPPINESS 0.8 // factor setting how aggressively/smoofly the speed is updated
-#define SMOOTHING 0.3
+#define SNAPPINESS 6 // factor setting how aggressively/smoofly the speed is updated
+#define SMOOTHING 0.15
 #define DELTA_PWM ((target_speed-measured_speed)*SNAPPINESS)
 
 #include <stdio.h>
@@ -16,8 +16,8 @@
 
 float opto();
 
-int duration = 25; // sec
-int path_distance = 100; // cm
+int duration = 55; // sec
+int path_distance = 300; // cm
 float total_revolutions = 0;
 
 bool interrupt = false;
@@ -44,7 +44,7 @@ int main(){
     PORTB |= 0x01;
     TCCR1B = (1 << ICNC1) | (1 << ICES1) | (1 << CS12) | (1 << CS10);
 
-    OCR0A = 255;
+    OCR0A = 150;
 
     prev_sec = opto();
 
@@ -59,7 +59,7 @@ int main(){
         // if(revolution_sec != prev_sec){
             measured_speed = CIRCUMFERENCE/revolution_sec;
         
-            current_distance += CIRCUMFERENCE/SLICES;
+            current_distance += ((float)CIRCUMFERENCE)/((float)SLICES);
 
             target_speed = (path_distance-current_distance)/(duration-elapsed_time);
         // }
