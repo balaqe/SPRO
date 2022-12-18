@@ -100,16 +100,20 @@ int main()
 
 
 ///////*************** Main Loop ***************///////
-    while(Battery_volt() > 6) 
+    while(Battery_volt() > 6.8) 
     {
 
-    
 
+        printf("%f\n", Battery_volt());
+        _delay_ms(1000);
+    
+    
         battery_info_sender();          // sends the battery info to the screen
         Button_scaner(7);               // scans for information from the screen
         Battery_volt();                 // checks the status with the battery
         Car_config();                   // configurates the car
         CarStartup();                   //Calls a fuction carstartup
+    
 
 
     }
@@ -405,7 +409,7 @@ float Battery_volt(void){
  */
 void battery_info_sender(void){
 
-    float battery_Prosent = ((Battery_volt()-6)/2.333333)*100;      // calculate for the procentage
+    float battery_Prosent = ((Battery_volt()-6.8)/0.7)*100;         // calculate for the procentage
     printf("j0.val=%.0f%c%c%c",battery_Prosent,255,255,255);        // sends the procenst to the screen
     printf("n2.val=%.0f%c%c%c",battery_Prosent,255,255,255);        // sends the procenst to the screen
 
