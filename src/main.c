@@ -1,11 +1,10 @@
 #define CIRCUMFERENCE 20 // cm
 #define SLICES 8 // number of slices (holes and solid parts) on the encoder wheel
 #define SNAPPINESS 3 // factor setting how aggressively/smoofly the speed is updated
-#define SMOOTHING 0.15
+#define SMOOTHING 0
 #define DELTA_PWM ((target_speed-measured_speed)*SNAPPINESS)
 
 
-#include <Arduino.h>
 #include <stdio.h>
 #include <avr/io.h>
 #include <util/delay.h>
@@ -233,7 +232,10 @@ void CarStartup(void)
         }
         _delay_ms(1000);                                        // delay of 1 sec
 
+
     }
+    total_distance = 0;
+    total_time = 0;
     CarRun();                       // Calls the fuction CarRun that Runs the car        
    
     }
@@ -319,14 +321,14 @@ void Motor_thing(int duration /* sec */ , int path_distance/* cm/s */)
 
 
             /**** data for the display regarding the speed ****/
-            if (measured_speed > 4){
+            if (measured_speed < 10){
             printf("x0.val=%.0f%c%c%c",measured_speed,255,255,255);   // sends the Carspeed to the dispay interger x0
             printf("z1.val=%.0f%c%c%c",measured_speed*10,255,255,255);   // sends the Carspeed to the dispay interger z1
             }
 
 
             /**** data for the display regarding the distance ****/
-            if((current_distance/path_distance)*100 < 101)
+            if((current_distance/path_distance)*100 <= 100)
             {printf("j1.val=%.0f%c%c%c",(current_distance/path_distance)*100,255,255,255);}   // sends the Carspeed to the dispay interger x0
             printf("n1.val=%.0f%c%c%c",current_distance,255,255,255);   // sends the current distance to the dispay interger z1
             
